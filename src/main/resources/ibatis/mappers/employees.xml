@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+<sqlMap>
+
+	<!-- 
+		insert 구문 작성하기
+			<insert /> 태그를 사용한다.
+			id 속성과 parameterClass 속성을 정의한다.
+				* parameterClass 속성에는 insert구문 실행에 필요한 값을 포함하고 있는
+				  객체를 지정한다.
+				  	값을 포함하고 있는 객체가 VO 객체인 경우
+				  		<insert id="insertEmployee" parameterClass="vo.Employee">
+				  		
+				  	값을 포함하고 있는 객체가 Map<String, Object> 객체인 경우
+				  		<insert id="insertEmployee" parameterClass="map">
+				* 값이 치환될 자리에 ? 대신 #멤버변수명# 혹은 #맵의키# 
+				* 객체에 다른 객체가 포함되어 있는 경우
+					public class Order {
+						int no;
+						int totalPrice;
+						User customer;
+					}
+					insertinto orders (order_no, total_price, customer_id)
+					values
+					(order_seq.nextval, #total_price#, #customer#)
+	 -->
+
+		<insert id="insertEmployee" parameterClass="vo.Employee">
+			insert into employees
+			(employee_id, first_name, last_name, email, phone_number, hire_date, job_id, salary)
+			values
+			(employees_seq.nextval, #firstName#, #lastName#, #email#, #phoneNumber#, sysdate, #jobId#, #salary#)
+		</insert>
+	
+	<!-- 
+		select 구문 작성하기
+			1. <select /> 태그를 사용한다.
+			2. id, resultClass, resultMap 속성을 정의한다.
+				* resultClass와 resultMap 중 하나만 사용한다. 
+				* resultClass와 resultMap은 조회되는 행의 개수와 상관없이
+				  한 행의 값을 담을 수 있는 객체 혹은 resultMap을 지정한다.
+		 	3. resultClass 정의하기
+		 		* 1행 1열과 조회되는 경우
+		 			- 조회결과가 정수, 실수, 문자열, 날짜 하나이다.
+		 			- queryForObject() 메소드로 실행한다.
+		 			
+		 			<select id="xxx" resultClass="기본자료형타입" />
+		 			<select id="xxx" resultClass="int">
+		 				select count(*)
+		 				from employees
+		 			</select>
+		 			public int test() {
+		 				return (Integer)template.queryForObject("xxx");
+		 			}
+		 			
+		 			<select id="xxx" parameterClass="int" resultClass="double">
+		 				select salary
+		 				from employees
+		 				where employee_id = #value#
+		 			</select>
+		 			public double test(int empId) {
+		 				return (Double)template.queryForObject("xxx", empId);
+		 			}
+		 			
+		 			<select id="xxx" parameterClass="int" resultClass="string">
+		 				select department_name
+		 				from departments
+		 				where department_id = #value#
+		 			</select>
+		 			public double test(int deptId) {
+		 				return (String)template.queryForObject("xxx", deptId);
+		 			}
+		 			
+		 			<select id="xxx" parameterClass="string" resultClass="string">
+		 				select job_title
+		 				from jobs
+		 				where job_id = #value#
+		 			</select>
+		 			public String test(String jobId) {
+		 				return (String)template.queryForObject("xxx", jobId);
+		 			}
+		 			
+		 			
+		 		* 1행 n열이 조회되는 경우
+		 			- 조회결과를 VO객체나 Map객체에 저장해야한다.
+		 			  * 조회결과를 Map객체에 저장할 때는 resultClass="hashmap"으로 작성한다.
+		 			- 조회결과를 Map객체에 저장하면 컬럼명이 key가 되고, 컬럼값이 value가 된다.
+		 			- 컬럼의 값을 VO객체에 저장할 때 컬럼명과 같은 이름의 멤버변수에 저장하기 때문에
+		 			  별칭을 사용해서 컬럼명을 멤버변수 이름과 일치시킨다.
+		 			- queryForObject() 메소드로 실행한다. 
+		 			
+		 			<select id="xxx" parameterClass="int" resultClass="vo.Employee">
+		 				select employee_id as id,
+		 					   first_name  as firstName;
+		 					   last_name   as lastName
+		 				from employees
+		 				where employee_id = #value#
+		 			</select>
+		 			public Employee test(int empId) {
+		 				return (Employee) template.queryForObject("xxx", empId);
+		 			}
+		 			* ibatis는 해당 쿼리를 실행하고, Employee객체를 생성해서
+		 			  조회결과를 Employee객체의 멤버변수에 저장한 다음 반환한다.
+		 			
+		 			public class Order {
+						int no;
+						int totalPrice;
+						User user;
+					}
+		 			<select id="xxx" parameterClass="int" resultClass="vo.Order">
+		 				select A.order_no as no,
+		 					   A.total_price as totalPrice,
+		 					   A.user_id as "user.id" 
+		 					   B.user_name as "user.name"
+		 				from orders A, users B
+		 				where order_no = #value#
+		 				and A.user.id = B.user_id
+		 			</select>
+		 			public Order test(int orderNo) {
+		 				return (Order) template.queryForObject("xxx", orderNo);
+		 			}
+		 			* 객체를 포함하고 있는 경우 위와 같이 별칭을 적을 때 ""안에 작성하고,
+		 			  "멤버변수명.멤버변수"의 형식으로 작성한다.
+		 			
+		 			<select id="xxx" parameterClass="int" resultClass="hashmap">
+		 				select A.dept_id, A.dept_name, (select count(*) from employees where dept_id = A.dept_id) as emp_count
+		 				form depts A
+		 				where dept_id = #value#
+		 			</select>
+		 			public Map<String, Object> test(int deptId) {
+		 				return (Map<String, Objet>) template.queryForObject("xxx", deptId);
+		 			}
+		 			* 이 메소드가 반환하는 값 -> {"DEPT_ID":100, "DEPT_NAME":"영업팀", "EMP_COUNT":5} 
+		 			
+		 		
+		 		* n행 1열이 조회되는 경우 
+		 			- 조회결과가 정수, 실수, 문자열, 날짜 하나이다.
+		 			- resultClass는 행이 여러 개여도 하나의 행에 대해서만 정의하기 때문에 
+		 			  1행 1열을 조회하는 경우와 작성법은 동일하다.
+		 			  (단) 1행 1열은 queryForObject로 실행하고, 
+		 			  	   n행 1열은 queryForList로 실행한다.
+		 			  <select id="xxx" resultClass="string">
+		 			  	select dept_name
+		 			  	from depts
+		 			  </select>
+		 			  * 조회결과
+		 			  	dept_name
+		 			  	영업팀
+		 			  	기술팀
+		 			  	전산팀
+		 			  	총무팀
+		 			  public List<String> test() {
+		 			  	return (List<String>) template.queryForList("xxx");
+		 			  }
+		 		
+		 		
+		 		* n행 n열이 조회되는 경우
+		 			- 조회결과를 VO객체나 Map객체에 저장해야한다.
+		 			<select id="xxx" resultClass="vo.Employee">
+		 				select employee_id  as id,
+		 					   first_name   as firstName,
+		 					   last_name    as lastName,
+		 					   job_id       as jobId
+		 				from employees
+		 				where dept_id = #value# 	
+		 			</select>
+		 		     * 조회결과
+		 			 	id	        firstName lastName   jobId
+		 			 	100			홍		   길동 		 사장
+		 			 	110			김		   유신 		 부사장
+		 			 public List<Employee> test(int deptId) {
+		 			 	return (List<Employee>) template.queryForList("xxx", deptId);
+		 			 }
+	 -->
+	
+	<!-- 
+		모든 직원수를 조회하는 SQL문
+	 -->
+	 <select id="getAllEmployeesCount" resultClass="int">
+	 	select count(*)
+	 	from employees
+	 </select>
+	 
+	 <!-- 
+	 	특정 부서의 직원수를 조회하는 SQL문
+	  --> 
+	  <select id="getEmployeesCountByDeptId" parameterClass="int" resultClass="int">
+	  	select count(*)
+	  	from employees
+	  	where department_id = #value#
+	  </select>
+	  
+	  <!-- 
+	  	특정 직원의 연봉을 조회하는 SQL문
+	   -->
+	   <select id="getAnnualSalaryByEmpId" parameterClass="int" resultClass="double">
+	   		select salary*12 + nvl(commission_pct, 0)*salary*12
+	   		from employees
+	   		where employee_id = #value#
+	   </select>
+	   
+	   <!--
+	    	모든 부서명을 조회하는 SQL문
+	    -->
+	    <select id="getAllDeptNames" resultClass="string">
+	    	select department_name
+	    	from departments
+	    	order by department_name asc
+	    </select>
+	  
+	  <!-- 
+	  	특정 직원의 상세정보를 조회하는 SQL문
+	   -->
+	   <select id="getEmployeeById" parameterClass="int" resultClass="vo.Employee">
+		   	select employee_id 		as id,
+		   		   first_name 		as firstName,
+		   		   last_name 		as lastName,
+		   		   email,
+		   		   phone_number 	as phoneNumber,
+		   		   hire_date 		as hireDate,
+		   		   job_id 			as jobId,
+		   		   salary,
+		   		   commission_pct 	as commissionPct,
+		   		   manager_id		as managerId,
+		   		   department_id 	as departmentId
+		   	from employees 
+		   	where employee_id = #value#
+	   </select>
+	   
+	   <select id="searchEmployees" parameterClass="map" resultClass="vo.Employee">
+	   		select employee_id 		as id,
+		   		   first_name 		as firstName,
+		   		   last_name 		as lastName,
+		   		   job_id 			as jobId,
+		   		   salary,
+		   		   department_id 	as departmentId
+		   	from employees 
+		   	<dynamic>
+		   		<isEqual property="opt" compareValue="id">
+		   			where employee_id = #keyword#
+		   		</isEqual>
+		   		<isEqual property="opt" compareValue="job">
+		   			where job_id = #keyword#
+		   		</isEqual>
+		   		<isEqual property="opt" compareValue="salary">
+		   			where salary between #min# and #max#
+		   		</isEqual>
+		   		<isEqual property="opt" compareValue="dept">
+		   			where department_id = #keyword#
+		   		</isEqual>
+		   	</dynamic>
+	   </select>
+	  
+</sqlMap>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMapConfig PUBLIC "-//ibatis.apache.org//DTD SQL Map Config 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-config-2.dtd">
+<sqlMapConfig>
+
+	<!-- 
+		<settings /> 태그
+			- ibatis와 관련된 다양한 설정을 지정하는 태그이다.
+			
+		<settings
+			useStatementNamespaces="true"/>
+		 -->
+	
+	<!-- 
+		<typeAlias /> 태그
+			- 클래스의 전체 이름에 대한 별칭을 지정하는 태그이다.
+		<typeAlias alias="Emp" type="kr.co.jhta.hr.vo.Emp"/>
+	 --> 
+	 
+	<!-- 
+		<sqlMap /> 태그
+			SQL 매핑 파일을 등록하는 태그이다.
+	 -->
+	<sqlMap resource="ibatis/mappers/employees.xml" />
+</sqlMapConfig>
